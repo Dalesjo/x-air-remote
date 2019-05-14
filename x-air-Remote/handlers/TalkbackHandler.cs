@@ -1,20 +1,18 @@
 ﻿using CoreOSC;
-using System;
-using System.Collections.Generic;
+using NLog;
 using System.Device.Gpio;
 using System.Text;
 using x_air_Remote.settings;
 
 namespace x_air_Remote.handlers
 {
-    class TalkbackHandler
+    internal class TalkbackHandler
     {
-
+        private readonly static Logger log = LogManager.GetCurrentClassLogger();
         private readonly UDPDuplex behringer;
-        private readonly TalkbackSetting talkbackSettings;
-        private readonly string talkbackPath;
         private readonly GpioController controller;
-
+        private readonly string talkbackPath;
+        private readonly TalkbackSetting talkbackSettings;
         public TalkbackHandler(UDPDuplex behringer, GpioController controller, TalkbackSetting talkbackSetting)
         {
             this.talkbackSettings = talkbackSetting;
@@ -34,16 +32,6 @@ namespace x_air_Remote.handlers
             controller.RegisterCallbackForPinValueChangedEvent(talkbackSettings.gpio, PinEventTypes.Rising, TalkbackDisabled);
         }
 
-        private void TalkbackDisabled(object sender, PinValueChangedEventArgs pinValueChangedEventArgs)
-        {
-            Talkback(false);
-        }
-
-        private void TalkbackEnabled(object sender, PinValueChangedEventArgs pinValueChangedEventArgs)
-        {
-            Talkback(true);
-        }
-
         public void Close()
         {
             controller.UnregisterCallbackForPinValueChangedEvent(talkbackSettings.gpio, TalkbackEnabled);
@@ -53,8 +41,19 @@ namespace x_air_Remote.handlers
 
         public void Talkback(bool talkback)
         {
+            log.Info($"Talkback {talkback}");
             var talkbackMessage = new CoreOSC.OscMessage(talkbackPath, talkback ? 3 : 4);
             behringer.Send(talkbackMessage);
+        }
+
+        private void TalkbackDisabled(object sender, PinValueChangedEventArgs pinValueChangedEventArgs)
+        {
+            Talkback(false);
+        }
+
+        private void TalkbackEnabled(object sender, PinValueChangedEventArgs pinValueChangedEventArgs)
+        {
+            Talkback(true);
         }
     }
 }

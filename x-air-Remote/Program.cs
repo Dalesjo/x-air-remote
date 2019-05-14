@@ -1,16 +1,15 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Threading.Tasks;
 using NLog.Extensions.Logging;
+using System.Threading.Tasks;
 
 namespace x_air_Remote
 {
-    class Program
+    internal class Program
     {
-        static async Task Main(string[] args)
+        private static async Task Main(string[] args)
         {
             var hostBuilder = new HostBuilder()
             .ConfigureAppConfiguration((hostingContext, config) =>
@@ -22,7 +21,6 @@ namespace x_air_Remote
             {
                 // Add your services with depedency injection.
                 services.AddHostedService<BehringerService>();
-
             })
             .ConfigureLogging(logging =>
             {

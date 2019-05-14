@@ -2,12 +2,9 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Device.Gpio;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using x_air_Remote.handlers;
@@ -17,24 +14,20 @@ namespace x_air_Remote
 {
     public class BehringerService : BackgroundService
     {
-
-        private readonly ILogger<BehringerService> log;
+        private readonly int clientPort;
         readonly private IConfiguration configuration;
-        private int counter = 0;
+        private readonly string host;
+        private readonly ILogger<BehringerService> log;
+        private readonly List<MuteHandler> muteHandlers;
+        private readonly List<MuteSetting> muteSettings;
+        private readonly int port;
+        private readonly List<TalkbackHandler> talkbackHandlers;
+        private readonly List<TalkbackSetting> talkbackSettings;
+        private readonly List<TallyHandler> tallyHandlers;
+        private readonly List<TallySetting> tallySettings;
         private UDPDuplex behringer;
         private HandleOscPacket callback;
-
-        private readonly string host;
-        private readonly int port;
-        private readonly int clientPort;
-        private readonly List<MuteSetting> muteSettings;
-        private readonly List<TallySetting> tallySettings;
-        private readonly List<TalkbackSetting> talkbackSettings;
-
-        private readonly List<TallyHandler> tallyHandlers;
-        private readonly List<MuteHandler> muteHandlers;
-        private readonly List<TalkbackHandler> talkbackHandlers;
-
+        private int counter = 0;
         public BehringerService(IConfiguration configuration, ILogger<BehringerService> logger)
         {
             log = logger;
@@ -50,22 +43,9 @@ namespace x_air_Remote
             tallySettings = configuration.GetSection("tally").Get<List<TallySetting>>();
             talkbackSettings = configuration.GetSection("talkback").Get<List<TalkbackSetting>>();
 
-
             tallyHandlers = new List<TallyHandler>();
             muteHandlers = new List<MuteHandler>();
             talkbackHandlers = new List<TalkbackHandler>();
-            
-        }
-
-        private void KeepAlive()
-        {
-            while (true)
-            {
-                var message = new CoreOSC.OscMessage("/xremote");
-                log.LogInformation($"command sent: {message}");
-                behringer.Send(message);
-                Thread.Sleep(8000);
-            }
         }
 
         public void LogMessage(OscPacket packet)
@@ -84,7 +64,7 @@ namespace x_air_Remote
         protected override Task ExecuteAsync(CancellationToken cancellationToken)
         {
             /**
-              * Callback handle that will handle 
+              * Callback handle that will handle
               * every message recieved from Behringer X Air */
             callback += LogMessage;
             return Task.Run(() =>
@@ -104,7 +84,7 @@ namespace x_air_Remote
                     }
                 }
 
-                if(muteSettings is List<MuteSetting>)
+                if (muteSettings is List<MuteSetting>)
                 {
                     foreach (var muteSetting in muteSettings)
                     {
@@ -139,9 +119,19 @@ namespace x_air_Remote
                     handler.Close();
                 }
 
-
                 log.LogInformation("BehringerService terminated");
             });
+        }
+
+        private void KeepAlive()
+        {
+            while (true)
+            {
+                var message = new CoreOSC.OscMessage("/xremote");
+                log.LogInformation($"command sent: {message}");
+                behringer.Send(message);
+                Thread.Sleep(8000);
+            }
         }
     }
 }

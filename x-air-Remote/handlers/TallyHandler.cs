@@ -1,24 +1,22 @@
 ﻿using CoreOSC;
+using NLog;
 using System;
-using System.Collections.Generic;
 using System.Device.Gpio;
 using System.Text;
 using x_air_Remote.settings;
 
 namespace x_air_Remote.handlers
 {
-    class TallyHandler
+    internal class TallyHandler
     {
+        private readonly static Logger log = LogManager.GetCurrentClassLogger();
         private readonly UDPDuplex behringer;
-        private readonly TallySetting tallySetting;
         private readonly GpioController controller;
-
-        private double level;
-        private bool muted;
-
         private readonly string levelPath;
         private readonly string mutePath;
-
+        private readonly TallySetting tallySetting;
+        private double level;
+        private bool muted;
         public TallyHandler(UDPDuplex behringer, GpioController controller, TallySetting tallySetting)
         {
             controller.OpenPin(tallySetting.gpio, PinMode.Output);
@@ -46,6 +44,22 @@ namespace x_air_Remote.handlers
             ForceUpdate();
         }
 
+        public void Callback(OscPacket packet)
+        {
+            var messageReceived = (OscMessage)packet;
+
+            if (messageReceived.Address == levelPath && messageReceived.Arguments.Count > 0)
+            {
+                level = Convert.ToDouble(messageReceived.Arguments[0]);
+                CheckStatus();
+            }
+            else if (messageReceived.Address == mutePath && messageReceived.Arguments.Count > 0)
+            {
+                muted = !Convert.ToBoolean(messageReceived.Arguments[0]);
+                CheckStatus();
+            }
+        }
+
         public void Close()
         {
             controller.ClosePin(tallySetting.gpio);
@@ -53,14 +67,14 @@ namespace x_air_Remote.handlers
 
         private void CheckStatus()
         {
-            if(level > tallySetting.level && muted == false)
+            if (level > tallySetting.level && muted == false)
             {
-                Console.WriteLine($"TallyHandler {tallySetting.channel.ToString("D2")} ON");
+                log.Info($"TallyHandler {tallySetting.channel.ToString("D2")} ON");
                 controller.Write(tallySetting.gpio, PinValue.High);
             }
             else
             {
-                Console.WriteLine($"TallyHandler {tallySetting.channel.ToString("D2")} OFF");
+                log.Info($"TallyHandler {tallySetting.channel.ToString("D2")} OFF");
                 controller.Write(tallySetting.gpio, PinValue.Low);
             }
         }
@@ -72,22 +86,6 @@ namespace x_air_Remote.handlers
 
             var forceMuteUpdate = new CoreOSC.OscMessage(mutePath);
             behringer.Send(forceMuteUpdate);
-        }
-
-        public void Callback(OscPacket packet)
-        {
-            var messageReceived = (OscMessage)packet;
-            
-            if (messageReceived.Address == levelPath && messageReceived.Arguments.Count > 0)
-            {
-                level = Convert.ToDouble(messageReceived.Arguments[0]);
-                CheckStatus();
-            }
-            else if (messageReceived.Address == mutePath && messageReceived.Arguments.Count > 0)
-            {
-                muted = !Convert.ToBoolean(messageReceived.Arguments[0]);
-                CheckStatus();
-            }
         }
     }
 }

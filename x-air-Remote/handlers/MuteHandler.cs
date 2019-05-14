@@ -1,19 +1,18 @@
 ﻿using CoreOSC;
-using System;
-using System.Collections.Generic;
+using NLog;
 using System.Device.Gpio;
 using System.Text;
 using x_air_Remote.settings;
 
 namespace x_air_Remote.handlers
 {
-    class MuteHandler
+    internal class MuteHandler
     {
+        private readonly static Logger log = LogManager.GetCurrentClassLogger();
         private readonly UDPDuplex behringer;
-        private readonly MuteSetting muteSetting;
-        private readonly string mutePath;
         private readonly GpioController controller;
-
+        private readonly string mutePath;
+        private readonly MuteSetting muteSetting;
         public MuteHandler(UDPDuplex behringer, GpioController controller, MuteSetting muteSetting)
         {
             this.muteSetting = muteSetting;
@@ -31,16 +30,6 @@ namespace x_air_Remote.handlers
             controller.RegisterCallbackForPinValueChangedEvent(muteSetting.gpio, PinEventTypes.Rising, MuteDisabled);
         }
 
-        private void MuteDisabled(object sender, PinValueChangedEventArgs pinValueChangedEventArgs)
-        {
-            Mute(true);
-        }
-
-        private void MuteEnabled(object sender, PinValueChangedEventArgs pinValueChangedEventArgs)
-        {
-            Mute(false);
-        }
-
         public void Close()
         {
             controller.UnregisterCallbackForPinValueChangedEvent(muteSetting.gpio, MuteEnabled);
@@ -50,9 +39,19 @@ namespace x_air_Remote.handlers
 
         public void Mute(bool muted)
         {
+            log.Info($"Mute {muted}");
             var muteMessage = new CoreOSC.OscMessage(mutePath, muted ? 0 : 1);
             behringer.Send(muteMessage);
         }
 
+        private void MuteDisabled(object sender, PinValueChangedEventArgs pinValueChangedEventArgs)
+        {
+            Mute(true);
+        }
+
+        private void MuteEnabled(object sender, PinValueChangedEventArgs pinValueChangedEventArgs)
+        {
+            Mute(false);
+        }
     }
 }
