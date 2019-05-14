@@ -8,5 +8,7 @@ namespace x_air_Remote.settings
     {
         public int channel { get; set; }
         public int gpio { get; set; }
+
+        public int bus { get; set; }
     }
 }
