@@ -41,4 +41,8 @@
     </Compile>
   </ItemGroup>
 
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="if not exist $(TargetDir)\log mkdir $(TargetDir)\log&#xD;&#xA;if not exist $(TargetDir)\archive mkdir $(TargetDir)\archive" />
+  </Target>
+
 </Project>
