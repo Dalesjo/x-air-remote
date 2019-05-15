@@ -46,12 +46,12 @@ namespace x_air_Remote.handlers
 
         private void MuteDisabled(object sender, PinValueChangedEventArgs pinValueChangedEventArgs)
         {
-            Mute(true);
+            Mute(false);
         }
 
         private void MuteEnabled(object sender, PinValueChangedEventArgs pinValueChangedEventArgs)
         {
-            Mute(false);
+            Mute(true);
         }
     }
 }

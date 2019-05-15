@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.0</TargetFramework>
-    <RootNamespace>x_air_Remote</RootNamespace>
+    <RootNamespace>x_air_remote</RootNamespace>
     <LangVersion>7.3</LangVersion>
   </PropertyGroup>
 

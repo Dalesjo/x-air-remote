@@ -25,6 +25,9 @@ namespace x_air_Remote
         private readonly List<TalkbackSetting> talkbackSettings;
         private readonly List<TallyHandler> tallyHandlers;
         private readonly List<TallySetting> tallySettings;
+        private readonly List<DcaHandler> dcaHandlers;
+        private readonly List<DcaSetting> dcaSettings;
+
         private UDPDuplex behringer;
         private HandleOscPacket callback;
         private int counter = 0;
@@ -35,6 +38,7 @@ namespace x_air_Remote
             counter = 0;
             log.LogInformation("BehringerService started");
 
+            log.LogInformation("Reading Logfiles");
             host = configuration.GetValue<string>("host");
             port = configuration.GetValue<int>("port");
             clientPort = configuration.GetValue<int>("clientPort");
@@ -42,23 +46,13 @@ namespace x_air_Remote
             muteSettings = configuration.GetSection("mute").Get<List<MuteSetting>>();
             tallySettings = configuration.GetSection("tally").Get<List<TallySetting>>();
             talkbackSettings = configuration.GetSection("talkback").Get<List<TalkbackSetting>>();
+            dcaSettings = configuration.GetSection("dca").Get<List<DcaSetting>>();
 
             tallyHandlers = new List<TallyHandler>();
             muteHandlers = new List<MuteHandler>();
             talkbackHandlers = new List<TalkbackHandler>();
-        }
+            dcaHandlers = new List<DcaHandler>();
 
-        public void LogMessage(OscPacket packet)
-        {
-            var messageReceived = (OscMessage)packet;
-            Console.Write(++counter + "#");
-            Console.Write(messageReceived.Address.ToString());
-            foreach (var arg in messageReceived.Arguments)
-            {
-                Console.Write("," + arg.ToString());
-            }
-
-            Console.WriteLine("");
         }
 
         protected override Task ExecuteAsync(CancellationToken cancellationToken)
@@ -66,60 +60,89 @@ namespace x_air_Remote
             /**
               * Callback handle that will handle
               * every message recieved from Behringer X Air */
-            callback += LogMessage;
             return Task.Run(() =>
             {
-                log.LogInformation("Connected to Behringer IP: {host} Port: {port}");
-                behringer = new UDPDuplex(host, port, clientPort, callback);
-                GpioController controller = new GpioController(PinNumberingScheme.Logical);
-
-                new Thread(() => KeepAlive()) { IsBackground = true }.Start();
-
-                if (tallySettings is List<TallySetting>)
+                try
                 {
-                    foreach (var tallySetting in tallySettings)
+                    log.LogInformation($"Connected to Behringer IP: {host} Port: {port} over UDP");
+                    behringer = new UDPDuplex(host, port, clientPort, callback);
+
+                    log.LogInformation($"Connecting to GpioController");
+                    GpioController controller = new GpioController(PinNumberingScheme.Logical);
+
+                    log.LogInformation($"Starting Background Thread for keepalive");
+                    new Thread(() => KeepAlive()) { IsBackground = true }.Start();
+
+                    if (tallySettings is List<TallySetting>)
                     {
-                        var handler = new TallyHandler(behringer, controller, tallySetting);
-                        tallyHandlers.Add(handler);
+                        foreach (var tallySetting in tallySettings)
+                        {
+                            var handler = new TallyHandler(behringer, controller, tallySetting);
+                            tallyHandlers.Add(handler);
+                        }
                     }
-                }
 
-                if (muteSettings is List<MuteSetting>)
-                {
-                    foreach (var muteSetting in muteSettings)
+                    if (muteSettings is List<MuteSetting>)
                     {
-                        var handler = new MuteHandler(behringer, controller, muteSetting);
-                        muteHandlers.Add(handler);
+                        foreach (var muteSetting in muteSettings)
+                        {
+                            var handler = new MuteHandler(behringer, controller, muteSetting);
+                            muteHandlers.Add(handler);
+                        }
                     }
-                }
 
-                if (talkbackSettings is List<TalkbackSetting>)
-                {
-                    foreach (var talkbackSetting in talkbackSettings)
+                    if (talkbackSettings is List<TalkbackSetting>)
                     {
-                        var handler = new TalkbackHandler(behringer, controller, talkbackSetting);
-                        talkbackHandlers.Add(handler);
+                        foreach (var talkbackSetting in talkbackSettings)
+                        {
+                            var handler = new TalkbackHandler(behringer, controller, talkbackSetting);
+                            talkbackHandlers.Add(handler);
+                        }
                     }
+
+                    if (dcaSettings is List<DcaSetting>)
+                    {
+                        foreach (var dcaSetting in dcaSettings)
+                        {
+                            var handler = new DcaHandler(behringer, controller, dcaSetting);
+                            dcaHandlers.Add(handler);
+                        }
+                    }
+
+                    cancellationToken.WaitHandle.WaitOne();
+
+                    foreach (var handler in tallyHandlers)
+                    {
+                        handler.Close();
+                    }
+
+                    foreach (var handler in muteHandlers)
+                    {
+                        handler.Close();
+                    }
+
+                    foreach (var handler in talkbackHandlers)
+                    {
+                        handler.Close();
+                    }
+
+                    foreach (var handler in dcaHandlers)
+                    {
+                        handler.Close();
+                    }
+
                 }
-
-                cancellationToken.WaitHandle.WaitOne();
-
-                foreach (var handler in tallyHandlers)
+                catch (Exception e)
                 {
-                    handler.Close();
+                    log.LogError(e, "BehringerService Crashed");
+                    
                 }
-
-                foreach (var handler in muteHandlers)
+                finally
                 {
-                    handler.Close();
+                    log.LogInformation("UDP connection closed.");
+                    behringer.Close();
+                    log.LogInformation("BehringerService terminated");
                 }
-
-                foreach (var handler in talkbackHandlers)
-                {
-                    handler.Close();
-                }
-
-                log.LogInformation("BehringerService terminated");
             });
         }
 
@@ -128,7 +151,7 @@ namespace x_air_Remote
             while (true)
             {
                 var message = new CoreOSC.OscMessage("/xremote");
-                log.LogInformation($"command sent: {message}");
+                log.LogInformation($"Command sent: {message}");
                 behringer.Send(message);
                 Thread.Sleep(8000);
             }
