@@ -108,9 +108,17 @@ namespace x_air_Remote
                             dcaHandlers.Add(handler);
                         }
                     }
+                }
+                catch (Exception e)
+                {
+                    log.LogError(e, "BehringerService crashed while running");
+                    throw;
+                }
 
-                    cancellationToken.WaitHandle.WaitOne();
+                cancellationToken.WaitHandle.WaitOne();
 
+                try
+                {
                     foreach (var handler in tallyHandlers)
                     {
                         handler.Close();
@@ -131,17 +139,13 @@ namespace x_air_Remote
                         handler.Close();
                     }
 
+                    log.LogInformation("UDP connection closed.");
+                    behringer.Close();
                 }
                 catch (Exception e)
                 {
-                    log.LogError(e, "BehringerService Crashed");
-                    
-                }
-                finally
-                {
-                    log.LogInformation("UDP connection closed.");
-                    behringer.Close();
-                    log.LogInformation("BehringerService terminated");
+                    log.LogError(e, "BehringerService crashed while terminating");
+                    throw;
                 }
             });
         }
