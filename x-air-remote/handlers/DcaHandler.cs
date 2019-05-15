@@ -27,10 +27,17 @@ namespace x_air_Remote.handlers
             dcaPathBuilder.Append("/fader");
             dcaPath = dcaPathBuilder.ToString();
 
-            controller.OpenPin(dcaSetting.gpio, PinMode.InputPullUp);
-            controller.RegisterCallbackForPinValueChangedEvent(dcaSetting.gpio, PinEventTypes.Falling, dcaDown);
-            controller.RegisterCallbackForPinValueChangedEvent(dcaSetting.gpio, PinEventTypes.Rising, dcaUp);
-
+            try
+            {
+                controller.OpenPin(dcaSetting.gpio, PinMode.InputPullUp);
+                controller.RegisterCallbackForPinValueChangedEvent(dcaSetting.gpio, PinEventTypes.Falling, dcaDown);
+                controller.RegisterCallbackForPinValueChangedEvent(dcaSetting.gpio, PinEventTypes.Rising, dcaUp);
+            }
+            catch (Exception e)
+            {
+                log.Info(e,$"Could not connect to pin {dcaSetting.gpio}");
+                throw;
+            }
         }
 
         public void Close()
@@ -50,9 +57,9 @@ namespace x_air_Remote.handlers
             dcaLevel(dcaSetting.downLevel);
         }
 
-        public void dcaLevel(double level)
+        public void dcaLevel(int level)
         {
-            log.Info($"DCA {dcaPath},{level}");
+            log.Info($"GPIO {dcaSetting.gpio} Pressed, SEND {dcaPath},{level}");
             var dcaMessage = new CoreOSC.OscMessage(dcaPath, level);
             behringer.Send(dcaMessage);
         }

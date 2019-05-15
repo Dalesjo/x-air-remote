@@ -1,5 +1,6 @@
 ﻿using CoreOSC;
 using NLog;
+using System;
 using System.Device.Gpio;
 using System.Text;
 using x_air_Remote.settings;
@@ -12,10 +13,10 @@ namespace x_air_Remote.handlers
         private readonly UDPDuplex behringer;
         private readonly GpioController controller;
         private readonly string talkbackPath;
-        private readonly TalkbackSetting talkbackSettings;
+        private readonly TalkbackSetting talkbackSetting;
         public TalkbackHandler(UDPDuplex behringer, GpioController controller, TalkbackSetting talkbackSetting)
         {
-            this.talkbackSettings = talkbackSetting;
+            this.talkbackSetting = talkbackSetting;
             this.behringer = behringer;
             this.controller = controller;
 
@@ -27,21 +28,29 @@ namespace x_air_Remote.handlers
             talkbackPathBuilder.Append("/tap");
             talkbackPath = talkbackPathBuilder.ToString();
 
-            controller.OpenPin(talkbackSettings.gpio, PinMode.InputPullUp);
-            controller.RegisterCallbackForPinValueChangedEvent(talkbackSettings.gpio, PinEventTypes.Falling, TalkbackEnabled);
-            controller.RegisterCallbackForPinValueChangedEvent(talkbackSettings.gpio, PinEventTypes.Rising, TalkbackDisabled);
-        }
+            try
+            {
+                controller.OpenPin(talkbackSetting.gpio, PinMode.InputPullUp);
+                controller.RegisterCallbackForPinValueChangedEvent(talkbackSetting.gpio, PinEventTypes.Falling, TalkbackEnabled);
+                controller.RegisterCallbackForPinValueChangedEvent(talkbackSetting.gpio, PinEventTypes.Rising, TalkbackDisabled);
+            }
+            catch (Exception e)
+            {
+                log.Info(e,$"Could not connect to pin {talkbackSetting.gpio}");
+                throw;
+            }
+}
 
         public void Close()
         {
-            controller.UnregisterCallbackForPinValueChangedEvent(talkbackSettings.gpio, TalkbackEnabled);
-            controller.UnregisterCallbackForPinValueChangedEvent(talkbackSettings.gpio, TalkbackDisabled);
-            controller.ClosePin(talkbackSettings.gpio);
+            controller.UnregisterCallbackForPinValueChangedEvent(talkbackSetting.gpio, TalkbackEnabled);
+            controller.UnregisterCallbackForPinValueChangedEvent(talkbackSetting.gpio, TalkbackDisabled);
+            controller.ClosePin(talkbackSetting.gpio);
         }
 
         public void Talkback(bool talkback)
         {
-            log.Info($"Talkback {talkback}");
+            log.Info($"GPIO {talkbackSetting.gpio} Pressed, SEND {talkbackPath},{talkback}");
             var talkbackMessage = new CoreOSC.OscMessage(talkbackPath, talkback ? 3 : 4);
             behringer.Send(talkbackMessage);
         }

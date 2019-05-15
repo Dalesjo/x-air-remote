@@ -19,7 +19,7 @@ namespace x_air_Remote.handlers
         private bool muted;
         public TallyHandler(UDPDuplex behringer, GpioController controller, TallySetting tallySetting)
         {
-            controller.OpenPin(tallySetting.gpio, PinMode.Output);
+            
 
             var levelPathBuilder = new StringBuilder();
             levelPathBuilder.Append("/ch/");
@@ -40,7 +40,17 @@ namespace x_air_Remote.handlers
             this.behringer = behringer;
             this.controller = controller;
 
-            behringer.OscPacketCallback += Callback;
+            try
+            {
+                controller.OpenPin(tallySetting.gpio, PinMode.Output);
+            }
+            catch (Exception e)
+            {
+                log.Info(e,$"Could not connect to pin {tallySetting.gpio}");
+                throw;
+            }
+
+    behringer.OscPacketCallback += Callback;
             ForceUpdate();
         }
 

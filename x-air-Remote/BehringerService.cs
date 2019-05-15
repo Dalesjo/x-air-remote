@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Device.Gpio;
 using System.Threading;
 using System.Threading.Tasks;
+using x_air_remote.handlers;
 using x_air_Remote.handlers;
 using x_air_Remote.settings;
 
@@ -20,6 +21,8 @@ namespace x_air_Remote
         private readonly ILogger<BehringerService> log;
         private readonly List<MuteHandler> muteHandlers;
         private readonly List<MuteSetting> muteSettings;
+        private readonly List<MuteGroupHandler> muteGroupHandlers;
+        private readonly List<MuteGroupSetting> muteGroupSettings;
         private readonly int port;
         private readonly List<TalkbackHandler> talkbackHandlers;
         private readonly List<TalkbackSetting> talkbackSettings;
@@ -44,12 +47,14 @@ namespace x_air_Remote
             clientPort = configuration.GetValue<int>("clientPort");
 
             muteSettings = configuration.GetSection("mute").Get<List<MuteSetting>>();
+            muteGroupSettings = configuration.GetSection("mute").Get<List<MuteGroupSetting>>();
             tallySettings = configuration.GetSection("tally").Get<List<TallySetting>>();
             talkbackSettings = configuration.GetSection("talkback").Get<List<TalkbackSetting>>();
             dcaSettings = configuration.GetSection("dca").Get<List<DcaSetting>>();
 
             tallyHandlers = new List<TallyHandler>();
             muteHandlers = new List<MuteHandler>();
+            muteGroupHandlers = new List<MuteGroupHandler>();
             talkbackHandlers = new List<TalkbackHandler>();
             dcaHandlers = new List<DcaHandler>();
 
@@ -91,6 +96,15 @@ namespace x_air_Remote
                         }
                     }
 
+                    if (muteGroupSettings is List<MuteGroupSetting>)
+                    {
+                        foreach (var muteGroupSetting in muteGroupSettings)
+                        {
+                            var handler = new MuteGroupHandler(behringer, controller, muteGroupSetting);
+                            muteGroupHandlers.Add(handler);
+                        }
+                    }
+
                     if (talkbackSettings is List<TalkbackSetting>)
                     {
                         foreach (var talkbackSetting in talkbackSettings)
@@ -120,6 +134,11 @@ namespace x_air_Remote
                 try
                 {
                     foreach (var handler in tallyHandlers)
+                    {
+                        handler.Close();
+                    }
+
+                    foreach (var handler in muteHandlers)
                     {
                         handler.Close();
                     }

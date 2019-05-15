@@ -5,50 +5,49 @@ using System.Device.Gpio;
 using System.Text;
 using x_air_Remote.settings;
 
-namespace x_air_Remote.handlers
+namespace x_air_remote.handlers
 {
-    internal class MuteHandler
+    class MuteGroupHandler
     {
         private readonly static Logger log = LogManager.GetCurrentClassLogger();
         private readonly UDPDuplex behringer;
         private readonly GpioController controller;
         private readonly string mutePath;
-        private readonly MuteSetting muteSetting;
-        public MuteHandler(UDPDuplex behringer, GpioController controller, MuteSetting muteSetting)
+        private readonly MuteGroupSetting muteGroupSetting;
+        public MuteGroupHandler(UDPDuplex behringer, GpioController controller, MuteGroupSetting muteGroupSetting)
         {
-            this.muteSetting = muteSetting;
+            this.muteGroupSetting = muteGroupSetting;
             this.behringer = behringer;
             this.controller = controller;
 
             var mutePathBuilder = new StringBuilder();
-            mutePathBuilder.Append("/ch/");
-            mutePathBuilder.Append(muteSetting.channel.ToString("D2"));
-            mutePathBuilder.Append("/mix/on");
+            mutePathBuilder.Append("/config/mute/");
+            mutePathBuilder.Append(muteGroupSetting.group.ToString("D1"));
             mutePath = mutePathBuilder.ToString();
 
             try
             {
-                controller.OpenPin(muteSetting.gpio, PinMode.InputPullUp);
-                controller.RegisterCallbackForPinValueChangedEvent(muteSetting.gpio, PinEventTypes.Falling, MuteEnabled);
-                controller.RegisterCallbackForPinValueChangedEvent(muteSetting.gpio, PinEventTypes.Rising, MuteDisabled);
+                controller.OpenPin(muteGroupSetting.gpio, PinMode.InputPullUp);
+                controller.RegisterCallbackForPinValueChangedEvent(muteGroupSetting.gpio, PinEventTypes.Falling, MuteEnabled);
+                controller.RegisterCallbackForPinValueChangedEvent(muteGroupSetting.gpio, PinEventTypes.Rising, MuteDisabled);
             }
             catch (Exception e)
             {
-                log.Info(e,$"Could not connect to pin {muteSetting.gpio}");
+                log.Info(e, $"Could not connect to pin {muteGroupSetting.gpio}");
                 throw;
             }
-}
+        }
 
         public void Close()
         {
-            controller.UnregisterCallbackForPinValueChangedEvent(muteSetting.gpio, MuteEnabled);
-            controller.UnregisterCallbackForPinValueChangedEvent(muteSetting.gpio, MuteDisabled);
-            controller.ClosePin(muteSetting.gpio);
+            controller.UnregisterCallbackForPinValueChangedEvent(muteGroupSetting.gpio, MuteEnabled);
+            controller.UnregisterCallbackForPinValueChangedEvent(muteGroupSetting.gpio, MuteDisabled);
+            controller.ClosePin(muteGroupSetting.gpio);
         }
 
         public void Mute(bool muted)
         {
-            log.Info($"GPIO {muteSetting.gpio} Pressed, SEND {mutePath},{muted}");
+            log.Info($"GPIO {muteGroupSetting.gpio} Pressed, SEND {mutePath},{muted}");
             var muteMessage = new CoreOSC.OscMessage(mutePath, muted ? 0 : 1);
             behringer.Send(muteMessage);
         }
