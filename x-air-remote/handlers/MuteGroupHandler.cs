@@ -48,7 +48,7 @@ namespace x_air_remote.handlers
         public void Mute(bool muted)
         {
             log.Info($"GPIO {muteGroupSetting.gpio} Pressed, SEND {mutePath},{muted}");
-            var muteMessage = new CoreOSC.OscMessage(mutePath, muted ? 0 : 1);
+            var muteMessage = new CoreOSC.OscMessage(mutePath, muted ? 1 : 0);
             behringer.Send(muteMessage);
         }
 

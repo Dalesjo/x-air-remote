@@ -47,7 +47,7 @@ namespace x_air_Remote
             clientPort = configuration.GetValue<int>("clientPort");
 
             muteSettings = configuration.GetSection("mute").Get<List<MuteSetting>>();
-            muteGroupSettings = configuration.GetSection("mute").Get<List<MuteGroupSetting>>();
+            muteGroupSettings = configuration.GetSection("muteGroup").Get<List<MuteGroupSetting>>();
             tallySettings = configuration.GetSection("tally").Get<List<TallySetting>>();
             talkbackSettings = configuration.GetSection("talkback").Get<List<TalkbackSetting>>();
             dcaSettings = configuration.GetSection("dca").Get<List<DcaSetting>>();
